@@ -16,7 +16,7 @@ void swap(char *str, char *std)
 
 int main()
 {
-	char buf[1024];
+	char buf[1024] = {0};
 	gets(buf);
 	char *a = buf;
 	char *b = buf;
@@ -36,13 +36,13 @@ int main()
 	
 
 	while(*b){
-		while(*b != ' '){
+		while(*b != 0 && *b != ' '){
 			b++;
 		}
 		swap(a, b-1);
 		a = ++b;
 	}
-	swap(str, b-1);
+	swap(str, b-2);
 	printf("%s\n", str);
 	return 0;
 }
