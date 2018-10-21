@@ -60,12 +60,12 @@ void serviceIO(fd_set *rfds, int fd_array[], int num)
 			}
 			else if(s == 0){
 				printf("client quit!\n");
-				fd_array[i] = INIT;
 				close(fd_array[i]);
+				fd_array[i] = INIT;
 			}else{
 				perror("read");
-				fd_array[i] = INIT;
 				close(fd_array[i]);
+				fd_array[i] = INIT;
 			}
 		}
 	}
@@ -127,6 +127,7 @@ int main(int argc, char *argv[])
 	for(;;)
 	{
 		struct timeval timeout = {1, 0}; //每隔一秒检测一次
+		FD_ZERO(&rfds);
 
 		for(i = 0; i < num; i++)
 		{
