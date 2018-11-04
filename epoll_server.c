@@ -1,127 +1,103 @@
+/*
+ * 使用epoll多路转接技术的tcp服务端
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <errno.h>
+#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
-#include <arpa/inet.h>
 #include <netinet/in.h>
-
-void handlerReadyEvents(int epfd, struct epoll_event revs[], int num, int listen_sock)
-{
-	int i = 0;
-	struct epoll_event ev;
-	for(; i < num; i++){
-		int sock = revs[i].data.fd;
-		uint32_t events = revs[i].events;
-
-		if(sock == listen_sock && (events & EPOLLIN)){ //link event ready
-			struct sockaddr_in client;
-			socklen_t len = sizeof(client);
-			int new_sock = accept(sock, (struct sockaddr*)&client, &len);
-			if(new_sock < 0){
-				perror("accept");
-				continue;
-			}
-			printf("get a new client!\n");
-
-			//添加新事件到epoll模型
-			ev.events = EPOLLIN;
-			ev.data.fd = new_sock;
-			epoll_ctl(epfd, EPOLL_CTL_ADD, new_sock, &ev);
-		}
-		else if(events & EPOLLIN){ //normal read event ready
-			char buf[10240];
-			ssize_t s = read(sock, buf, sizeof(buf)-1);
-			if(s > 0){
-				buf[s] = 0;
-				printf("%s", buf); //read ok
-				ev.events = EPOLLOUT;
-				ev.data.fd = sock;
-				epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
-			}else if(s == 0){
-				printf("client quit!\n");
-				close(sock);
-				epoll_ctl(epfd, EPOLL_CTL_DEL, sock, NULL);
-			}else{
-				perror("read");
-			}
-		}
-		else if(events & EPOLLOUT){ //normal write event ready
-			const char *echo_http = "http/1.0 200 OK\r\n\r\n<html><h1>hello Epoll Server!</h1></html>\r\n";
-			write(sock, echo_http, strlen(echo_http));
-			close(sock);
-			epoll_ctl(epfd, EPOLL_CTL_DEL, sock, NULL);
-		}
-		else{ //bug!
-		}
-	}
-}
-
-int startup(int port)
-{
-	int sock = socket(AF_INET, SOCK_STREAM, 0);
-
-	if(sock < 0){
-		perror("socket");
-		exit(2);
-	}
-
-	int opt = 1;
-	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-	struct sockaddr_in local;
-	local.sin_family = AF_INET;
-	local.sin_port = htons(port);
-	local.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if(bind(sock, (struct sockaddr*)&local, sizeof(local)) < 0){
-		perror("bind");
-		exit(3);
-	}
-
-	if(listen(sock, 5) < 0){
-		perror("bind");
-		exit(4);
-	}
-
-	return sock;
-}
+#include <arpa/inet.h>
 
 int main(int argc, char *argv[])
 {
-	if(argc != 2){
-		printf("Usage : %s [port]\n", argv[0]);
+	if(argc != 3){
+		printf("Usgae : %s [ip] [port]", argv[0]);
 		return 1;
 	}
-
-	int listen_sock = startup(atoi(argv[1]));
-	int epfd = epoll_create(256);
-	if(epfd < 0){
-		printf("epoll_create error!\n");
-		return 5;
+	int listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if(listen_sock < 0){
+		perror("socket");
+		return 2;
 	}
 
-	struct epoll_event ev; //需要监听的事
+	struct sockaddr_in local;
+	local.sin_family = AF_INET;
+	local.sin_port = htons(atoi(argv[2]));
+	local.sin_addr.s_addr = inet_addr(argv[1]);
+	socklen_t len = sizeof(local);
+
+	if(bind(listen_sock, (struct sockaddr*)&local, len) < 0){
+		perror("bind");
+		return 3;
+	}
+
+	if(listen(listen_sock, 5) < 0){
+		perror("listen");
+		return 4;
+	}
+
+	//创建eventpoll结构
+	int epfd = epoll_create(10);
+	if(epfd < 0){
+		perror("epoll_create");
+		return -1;
+	}
+
+	//向内核添加事件
+	//epoll_ctl(), 
+	//默认水平触发(LT): 只要缓冲区有数据就一直提醒,每次epoll_wait都会触发事件就绪
+	//------------------------------------------------------------------------
+	//边缘触发(ET):每当有新的数据到来,事件会触发一次,假如缓冲区数据没有读完,
+	//但是不会再次提醒(就这一条事件来说不会触发),基于这中特性,就需要我们一次性将缓冲区数据全部读完
+	//为了防止数据缓冲区没有读完,因此进行了循环读取,recv有可能会阻塞,所以要设置成非阻塞
+	struct epoll_event ev;
 	ev.events = EPOLLIN;
 	ev.data.fd = listen_sock;
 	epoll_ctl(epfd, EPOLL_CTL_ADD, listen_sock, &ev);
 
-	struct epoll_event revs[64]; //发生的事件存放在这个数组中
 	while(1){
-		int timeout = 1000;
-		int num = epoll_wait(epfd, revs, sizeof(revs)/sizeof(revs[0]), timeout);
-		switch(num){
-			case -1:
-				printf("epoll_wait error!\n");
-				break;
-			case 0:
-				printf("timeout!!!\n");
-				break;
-			default:
-				handlerReadyEvents(epfd, revs, num, listen_sock);
-				break;
+		int i, ret;
+		struct epoll_event evs[10];
+		int nfds = epoll_wait(epfd, evs, 10, 3000);
+		if(nfds < 0){
+			perror("epoll_wait");
+			return -1;
+		}
+		else if(nfds == 0){
+			printf("timeout!..\n");
+			continue;
+		}
+		for(i = 0; i < nfds; i++){
+			if(evs[i].data.fd == listen_sock){
+				struct sockaddr_in client;
+				len = sizeof(client);
+				int sock = accept(listen_sock, (struct sockaddr*)&client, &len);
+				if(sock < 0){
+					perror("accept");
+					continue;
+				}
+				//给新连接组织新的连接结构
+				ev.events = EPOLLIN;
+				ev.data.fd = listen_sock;
+				epoll_ctl(epfd, EPOLL_CTL_ADD, listen_sock, &ev);
+			}
+			else{
+				char buf[1024] = {0};
+				ret = recv(evs[i].data.fd, buf, sizeof(buf)-1, 0);
+				if(ret <= 0){
+					if(errno == EAGAIN || errno == EINTR){
+						continue;
+					}
+					epoll_ctl(epfd, EPOLL_CTL_DEL, evs[i].data.fd, &ev);
+					close(evs[i].data.fd);
+				}
+				printf("client say:%s", buf);
+			}
 		}
 	}
+	return 0;
 }
