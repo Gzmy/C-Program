@@ -11,24 +11,31 @@ bool hasCycle(SListNode *head)
 {
     SListNode *fast = head;
     SListNode *slow = head;
-    SListNode *cur = NULL;
 
-    while(fast && slow){
-        cur = fast->next;
-        if(cur == NULL){
-            break;
-        }
-        fast = cur->next;
-        if(fast == NULL){
-            break;
-        }
-
+    while(fast && slow && fast->next){
+        fast = fast->next->next;
         slow = slow->next;
 
         if(fast == slow){
             return true;
         }
     }
+    //while(fast && slow){
+    //    cur = fast->next;
+    //    if(cur == NULL){
+    //        break;
+    //    }
+    //    fast = cur->next;
+    //    if(fast == NULL){
+    //        break;
+    //    }
+
+    //    slow = slow->next;
+
+    //    if(fast == slow){
+    //        return true;
+    //    }
+    //}
 
     return false;
 }
