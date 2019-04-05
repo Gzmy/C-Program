@@ -8,6 +8,39 @@
 //给定一个字符串s，你可以从中删除一些字符，使得剩下的串是一个回文串。如何删除才能使得回文串最长呢？
 //输出需要删除的字符个数。
 //https://www.nowcoder.com/test/question/done?tid=21391484&qid=44802#summary
+// 动态规划, 只需要求出最长回文串的长度即可
+
+int maxLen(std::string str, std::string dst) {
+	int str_len = str.size();
+	int dst_len = dst.size();
+	std::vector<std::vector<int> > vec(str_len+1, std::vector<int>(dst_len+1, 0));
+
+	for(int i = 1; i <= str_len; i++) {
+		for(int j = 1; j <= dst_len; j++) {
+			if(str[i-1] == dst[j-1]) {
+				vec[i][j] = vec[i-1][j-1] + 1;
+			} else {
+				vec[i][j] = std::max(vec[i-1][j], vec[i][j-1]);
+			}
+		}
+	}
+	return vec[str_len][dst_len];
+}
+
+void maxPaliStr() {
+	std::string str;
+	while(std::getline(std::cin, str)) {
+		if(str.size() == 1) {
+			std::cout << 1 << std::endl;
+			continue;
+		}
+
+		std::string dst = str;
+		std::reverse(dst.begin(), dst.end());
+		int max_len = maxLen(str, dst);
+		std::cout << str.size() - max_len << std::endl;
+	}
+}
 
 
 //把一个字符串的大写字母放到字符串的后面，
@@ -88,4 +121,11 @@ void maxAndminNum() {
 		}
 		std::cout << min << " " << max << std::endl;
 	}
+}
+
+
+int main()
+{
+	maxPaliStr();
+	return 0;
 }
