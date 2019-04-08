@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <math.h>
 
 void strPase() {
 	std::string str;
@@ -29,9 +31,43 @@ void strPase() {
 		}
 	}
 }
+//
+//void factor(int n, std::vector<int>& vec) {
+//	for(int i = 2; i <= sqrt(n); i++) {
+//		if(n%i == 0) {
+//			vec.push_back(i);
+//			if(n/i != i) {
+//				vec.push_back(n/i);
+//			}
+//		}
+//	}
+//}
+//
+//void jumpSlate() {
+//	int n, m;
+//	std::cin >> n >> m; 
+//	std::vector<int> stepNum(m+1, 0);
+//	std::vector<int> divNum;
+//	stepNum[n] = 1;
+//	for(int i = n; i <= m; i++) {
+//		if(stepNum[i] == 0) {
+//			continue;
+//		}
+//		divNum.clear();
+//		factor(i, divNum);
+//		for(size_t j = 0; j < divNum.size(); j++) {
+//			if(i+divNum[j] <= m && stepNum[i+divNum[j]] != 0) {
+//				stepNum[i+divNum[j]] = std::min(stepNum[i+divNum[j]], stepNum[i]+1);
+//			} else {
+//				stepNum[i+divNum[j]] = stepNum[i] + 1;
+//			}
+//		}
+//	}
+//	
+//	std::cout << (stepNum[m] > 0 ? stepNum[m]-1 :-1) << std::endl;
+//}
 
 int main()
 {
-	strPase();
-	// 网易动态规划
+	//strPase();
 }
