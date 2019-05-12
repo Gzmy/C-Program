@@ -19,7 +19,7 @@ private:
 public:
 	LRUCache(int cap) : _capacity(cap) {}
 
-	int getVal(int key) { // 访问某个页面
+	int getPage(int key) { // 访问某个页面
 		if(_cacheMap.find(key) == _cacheMap.end()) {
 			return -1; // 产生缺页中断
 		}
@@ -29,14 +29,15 @@ public:
 		return _cacheMap[key]->_val;
 	}
 
-	void setval(int key, int val) {
+	void setPage(int key, int val) {
 		if(_cacheMap.find(key) == _cacheMap.end()) {
 			// 淘汰最后一个
 			if(_cacheList.size() == _capacity) {
 				_cacheMap.erase(_cacheList.back()._key);
-				_cacheList.push_front(Node(key, val));
-				_cacheMap[key] = _cacheList.begin();
+				_cacheList.pop_back();
 			}
+			_cacheList.push_front(Node(key, val));
+			_cacheMap[key] = _cacheList.begin();
 		} else{
 			// 更新结点即可
 			_cacheMap[key]->_val = val;
